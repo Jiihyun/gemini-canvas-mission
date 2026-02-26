@@ -10,13 +10,8 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     /* Custom Scrollbar for Thumbnails */
-    .hide-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    .hide-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
     /* Animations */
     @keyframes bounce-in {
@@ -24,21 +19,11 @@
       50% { transform: scale(1.05); opacity: 1; }
       100% { transform: scale(1); opacity: 1; }
     }
-    .animate-bounce-in {
-      animation: bounce-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-    @keyframes fade-in-down {
-      from { transform: translateY(-10px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    .animate-fade-in-down {
-      animation: fade-in-down 0.3s ease-out forwards;
-    }
+    .animate-bounce-in { animation: bounce-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
   </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-  <!-- App Container (Mobile Mockup) -->
   <div class="w-full h-screen sm:h-[850px] sm:max-w-[400px] sm:rounded-[40px] sm:overflow-hidden sm:shadow-[0_20px_50px_rgba(0,0,0,0.15)] sm:border-8 border-slate-800 bg-white relative mx-auto font-sans flex flex-col">
     
     <!-- Toast Notification -->
@@ -46,6 +31,9 @@
       <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
       <span id="toast-message"></span>
     </div>
+
+    <!-- File Input (Hidden) -->
+    <input type="file" id="file-upload" multiple accept="image/*" class="hidden">
 
     <!-- Views -->
     <div id="home-view" class="flex-1 flex flex-col h-full bg-slate-50 relative pb-20 hidden"></div>
@@ -69,42 +57,22 @@
   </div>
 
   <script>
-    // --- Mock Data ---
+    // --- Mock Data (기본 샘플) ---
     const MOCK_GROUPS = [
       {
         id: 'g1',
         title: '인물 포즈 연속촬영',
         photos: [
-          { id: 'p1_1', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80', isRecommended: true },
+          { id: 'p1_1', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80' },
           { id: 'p1_2', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80' },
-          { id: 'p1_3', url: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=400&q=80', isBlurry: true },
+          { id: 'p1_3', url: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=400&q=80' },
           { id: 'p1_4', url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80' },
-        ]
-      },
-      {
-        id: 'g2',
-        title: '강아지 달리는 순간',
-        photos: [
-          { id: 'p2_1', url: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=400&q=80' },
-          { id: 'p2_2', url: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=400&q=80', isRecommended: true },
-          { id: 'p2_3', url: 'https://images.unsplash.com/photo-1598133894008-61f7fbf86b53?auto=format&fit=crop&w=400&q=80' },
-        ]
-      },
-      {
-        id: 'g3',
-        title: '아름다운 풍경 연사',
-        photos: [
-          { id: 'p3_1', url: 'https://images.unsplash.com/photo-1506744626753-eda8151a74a4?auto=format&fit=crop&w=400&q=80' },
-          { id: 'p3_2', url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=400&q=80', isRecommended: true },
-          { id: 'p3_3', url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=400&q=80', isBlurry: true },
-          { id: 'p3_4', url: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=400&q=80' },
-          { id: 'p3_5', url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?auto=format&fit=crop&w=400&q=80' },
         ]
       }
     ];
 
     // --- State ---
-    let view = 'home'; // 'home', 'sorting', 'trash'
+    let view = 'home';
     let groups = JSON.parse(JSON.stringify(MOCK_GROUPS));
     let trash = [];
     
@@ -120,26 +88,87 @@
     const bottomNavEl = document.getElementById('bottom-nav');
     const toastEl = document.getElementById('toast');
     const toastMessageEl = document.getElementById('toast-message');
-    const navHomeEl = document.getElementById('nav-home');
-    const navTrashEl = document.getElementById('nav-trash');
-    const navIconHome = document.getElementById('nav-icon-home');
-    const navIconTrash = document.getElementById('nav-icon-trash');
+    const fileUploadEl = document.getElementById('file-upload');
     const trashBadge = document.getElementById('trash-badge');
 
-    // --- Core Functions ---
-    window.setView = (newView) => {
-      view = newView;
-      render();
+    // --- File Upload & Fake AI Grouping Logic ---
+    window.triggerFileUpload = () => {
+      fileUploadEl.click();
     };
+
+    fileUploadEl.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+
+      showToast("AI가 사진 촬영 시간을 분석 중입니다...");
+
+      // 1. 파일 수정 시간(찍힌 시간) 기준으로 정렬
+      files.sort((a, b) => a.lastModified - b.lastModified);
+
+      let newGroups = [];
+      let currentGroup = [];
+
+      // 2. 60초(60000ms) 이내에 찍힌 사진들을 같은 묶음으로 분류 (시간 기반 알고리즘)
+      for (let i = 0; i < files.length; i++) {
+        if (currentGroup.length === 0) {
+          currentGroup.push(files[i]);
+        } else {
+          const prevFile = currentGroup[currentGroup.length - 1];
+          if (files[i].lastModified - prevFile.lastModified < 60000) {
+            currentGroup.push(files[i]);
+          } else {
+            newGroups.push(currentGroup);
+            currentGroup = [files[i]];
+          }
+        }
+      }
+      if (currentGroup.length > 0) newGroups.push(currentGroup);
+
+      // 3. 2장 이상 묶인 사진만 '연사 그룹'으로 인정하여 추가, 1장짜리는 무시 (또는 강제로 테스트용 그룹화)
+      const validGroups = newGroups.filter(g => g.length > 1);
+      
+      if (validGroups.length === 0) {
+        // 만약 찍힌 시간이 다 제각각이라 묶인게 없다면, 테스트를 위해 그냥 4장씩 강제로 묶어버림
+        let chunkedGroups = [];
+        for (let i = 0; i < files.length; i += 4) {
+          chunkedGroups.push(files.slice(i, i + 4));
+        }
+        processFileGroups(chunkedGroups.filter(g => g.length > 1));
+        setTimeout(() => showToast("연속 촬영된 사진이 없어 임의로 묶었습니다!"), 1000);
+      } else {
+        processFileGroups(validGroups);
+        setTimeout(() => showToast(`시간 분석 완료! ${validGroups.length}개의 묶음을 찾았습니다.`), 1000);
+      }
+      
+      // 입력창 초기화
+      fileUploadEl.value = '';
+    });
+
+    function processFileGroups(groupedFiles) {
+      const newAppGroups = groupedFiles.map((g, idx) => {
+        return {
+          id: `local_g_${Date.now()}_${idx}`,
+          title: `PC에서 찾은 연사 묶음 ${idx + 1}`,
+          photos: g.map((f, pIdx) => ({
+            id: `local_p_${Date.now()}_${idx}_${pIdx}`,
+            url: URL.createObjectURL(f)
+          }))
+        };
+      });
+      
+      groups = [...newAppGroups, ...groups]; // 새로 추가한 걸 맨 위로
+      render();
+    }
+
+    // --- Core Functions ---
+    window.setView = (newView) => { view = newView; render(); };
 
     window.showToast = (msg) => {
       toastMessageEl.innerText = msg;
       toastEl.classList.remove('hidden');
-      // trigger reflow
       void toastEl.offsetWidth;
       toastEl.classList.remove('scale-90', 'opacity-0');
       toastEl.classList.add('scale-100', 'opacity-100', 'animate-bounce-in');
-      
       clearTimeout(toastTimeout);
       toastTimeout = setTimeout(() => {
         toastEl.classList.remove('scale-100', 'opacity-100', 'animate-bounce-in');
@@ -156,12 +185,9 @@
     };
 
     window.toggleLike = (photoId) => {
-      if (likedPhotos.has(photoId)) {
-        likedPhotos.delete(photoId);
-      } else {
-        likedPhotos.add(photoId);
-      }
-      renderSortingView(); // 부분 렌더링
+      if (likedPhotos.has(photoId)) likedPhotos.delete(photoId);
+      else likedPhotos.add(photoId);
+      renderSortingView();
     };
 
     window.setCurrentPhotoIndex = (index) => {
@@ -177,11 +203,8 @@
       const trashed = [];
 
       group.photos.forEach(photo => {
-        if (likedPhotos.has(photo.id)) {
-          kept.push(photo);
-        } else {
-          trashed.push({ ...photo, deletedAt: new Date(), groupTitle: group.title });
-        }
+        if (likedPhotos.has(photo.id)) kept.push(photo);
+        else trashed.push({ ...photo, deletedAt: new Date(), groupTitle: group.title });
       });
 
       trash = [...trash, ...trashed];
@@ -208,7 +231,6 @@
       if (view !== 'sorting' || activeGroupIndex === null) return;
       const group = groups[activeGroupIndex];
       if (!group) return;
-      
       const photo = group.photos[currentPhotoIndex];
 
       if (e.key === 'ArrowLeft') {
@@ -223,7 +245,6 @@
 
     // --- Renderers ---
     function render() {
-      // Toggle visibility
       homeViewEl.classList.toggle('hidden', view !== 'home');
       sortingViewEl.classList.toggle('hidden', view !== 'sorting');
       trashViewEl.classList.toggle('hidden', view !== 'trash');
@@ -233,7 +254,11 @@
       if (view === 'sorting') renderSortingView();
       if (view === 'trash') renderTrashView();
 
-      // Update Bottom Nav UI
+      const navHomeEl = document.getElementById('nav-home');
+      const navTrashEl = document.getElementById('nav-trash');
+      const navIconHome = document.getElementById('nav-icon-home');
+      const navIconTrash = document.getElementById('nav-icon-trash');
+
       if (view === 'home') {
         navHomeEl.className = "flex flex-col items-center gap-1 transition-colors text-indigo-600";
         navIconHome.setAttribute('class', "w-6 h-6 fill-indigo-100");
@@ -253,7 +278,6 @@
         trashBadge.classList.add('hidden');
       }
 
-      // Re-initialize icons for newly added DOM elements
       setTimeout(() => lucide.createIcons(), 0);
     }
 
@@ -264,20 +288,24 @@
       let headerHTML = `
         <div class="bg-white px-6 pt-12 pb-8 rounded-b-3xl shadow-sm z-10">
           <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">SnapClean</h1>
-          <p class="text-slate-500 mt-2 font-medium">연속 촬영된 비슷한 사진들을 빠르게 정리하세요.</p>
+          <p class="text-slate-500 mt-2 font-medium text-sm">연속 촬영된 비슷한 사진들을 빠르게 정리하세요.</p>
           
+          <button onclick="triggerFileUpload()" class="mt-4 w-full bg-slate-800 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-700 transition active:scale-[0.98] shadow-lg shadow-slate-200">
+            <i data-lucide="image-plus" class="w-5 h-5"></i> 내 PC 사진 여러장 불러오기
+          </button>
+
           ${groups.length > 0 ? `
-            <div class="mt-6 bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex items-start gap-3">
+            <div class="mt-4 bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex items-start gap-3">
               <i data-lucide="sparkles" class="text-indigo-500 w-6 h-6 flex-shrink-0 mt-0.5"></i>
               <div>
                 <p class="text-indigo-900 font-bold leading-tight">오늘 ${groups.length}개의 묶음에서<br/>총 ${totalPhotos}장을 정리할 수 있습니다.</p>
-                <p class="text-indigo-600 text-sm mt-1">약 ${savedSpace}MB의 저장공간 확보 가능</p>
+                <p class="text-indigo-600 text-xs mt-1">약 ${savedSpace}MB의 저장공간 확보 가능</p>
               </div>
             </div>
           ` : `
-             <div class="mt-6 bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3">
+             <div class="mt-4 bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3">
               <i data-lucide="check-circle-2" class="text-emerald-500 w-6 h-6 flex-shrink-0"></i>
-              <p class="text-emerald-900 font-bold">모든 묶음을 정리했습니다!<br/><span class="text-sm font-normal">지금은 정리할 사진이 없어요.</span></p>
+              <p class="text-emerald-900 font-bold text-sm">정리할 묶음이 없습니다.</p>
             </div>
           `}
         </div>
@@ -298,7 +326,8 @@
         }).join('');
 
         return `
-          <button onclick="startSorting(${idx})" class="w-full bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-4 hover:shadow-md transition-all active:scale-[0.98] group/card">
+          <button onclick="startSorting(${idx})" class="w-full bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-4 hover:shadow-md transition-all active:scale-[0.98] group/card relative overflow-hidden">
+            ${group.id.includes('local') ? '<div class="absolute top-0 right-0 bg-indigo-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">MY PC</div>' : ''}
             <div class="flex justify-center w-full px-1">
               <div class="bg-slate-100 text-slate-700 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-sm">
                 총 ${group.photos.length}장
@@ -332,20 +361,6 @@
       const photo = group.photos[currentPhotoIndex];
       const isLiked = likedPhotos.has(photo.id);
 
-      let badgesHTML = '';
-      if (photo.isRecommended) {
-        badgesHTML += `
-          <div class="bg-indigo-500/90 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 backdrop-blur-md shadow-lg animate-fade-in-down">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> AI 추천 (가장 선명함)
-          </div>`;
-      }
-      if (photo.isBlurry) {
-        badgesHTML += `
-          <div class="bg-rose-500/90 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 backdrop-blur-md shadow-lg animate-fade-in-down">
-            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> 흔들림/눈 감음 감지
-          </div>`;
-      }
-
       let thumbnailsHTML = group.photos.map((p, idx) => {
         const isCurrent = idx === currentPhotoIndex;
         const pLiked = likedPhotos.has(p.id);
@@ -376,12 +391,7 @@
 
         <div class="flex-1 relative flex items-center justify-center overflow-hidden touch-none">
           <img src="${photo.url}" alt="sorting" class="w-full h-full object-contain transition-opacity duration-300 ease-in-out pointer-events-none" />
-          
-          <div class="absolute top-4 left-4 flex flex-col gap-2">
-            ${badgesHTML}
-          </div>
 
-          <!-- Left / Right Click Areas -->
           ${currentPhotoIndex > 0 ? `
             <button onclick="setCurrentPhotoIndex(${currentPhotoIndex - 1})" class="absolute left-0 top-0 bottom-32 w-1/3 z-10 cursor-pointer outline-none focus:outline-none flex items-center pl-4 opacity-0 hover:opacity-100 transition-opacity">
               <i data-lucide="chevron-left" class="w-10 h-10 text-white drop-shadow-lg"></i>
@@ -396,7 +406,7 @@
 
         <div class="pb-8 pt-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex flex-col items-center z-20">
           <p class="text-xs text-white/70 mb-4 flex items-center gap-1">
-            <i data-lucide="info" class="w-4 h-4"></i> 키보드 방향키: ↓ 좋아요, ↔ 이전/다음 (건너뛰기)
+            <i data-lucide="info" class="w-4 h-4"></i> 키보드 방향키: ↓ 좋아요, ↔ 이전/다음
           </p>
           
           <button onclick="toggleLike('${photo.id}')" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 transform active:scale-90 ${isLiked ? 'bg-rose-500 scale-110 shadow-rose-500/50' : 'bg-white/10 border-2 border-white/30 hover:bg-white/20'}">
@@ -415,7 +425,6 @@
 
     function renderTrashView() {
       let contentHTML = '';
-
       if (trash.length === 0) {
         contentHTML = `
           <div class="h-full flex flex-col items-center justify-center text-slate-400 gap-4 mt-20">
@@ -437,7 +446,6 @@
             </div>
           </div>
         `).join('');
-
         contentHTML = `<div class="grid grid-cols-2 gap-3">${gridItems}</div>`;
       }
 
@@ -459,7 +467,6 @@
       `;
     }
 
-    // Initial Render
     render();
   </script>
 </body>
